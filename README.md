@@ -49,14 +49,14 @@ Traditional secure aggregation protocols require multi-round interactions and he
 
 ---
 
-## 2. Natural Language vs. Spatiotemporal Mobility Trajectories
+## 2. Natural Language vs. Microsoft GeoLife Trajectories
 
 | Natural Language (`Word_completion_agent/OPA`) | Spatiotemporal Mobility (`Spatiotemporal_moblity/OPA`) |
 | :--- | :--- |
-| **Word** | **H3 Hexagon ID** (Resolution 9) |
-| **Sentence** | **Trajectory Walk** (Ordered sequence of H3 cells) |
-| **Tokenizer** (`WordTokenizer`) | **Spatial Tokenizer** (`LocationTokenizer`) |
-| **Model** (`NextWordModel`) | **Model** (`NextLocationModel`) |
+| **Word** | **H3 Hexagon ID** (Resolution 9 from GeoLife GPS fixes) |
+| **Sentence** | **Trajectory Trip** (6-hr chunked & static filtered sequence) |
+| **Tokenizer** (`WordTokenizer`) | **Spatial Tokenizer** (`LocationTokenizer`, vocab_size = 2500) |
+| **Model** (`NextWordModel`) | **Model** (`NextLocationModel`, $L = 261,316$ parameters) |
 | **Canary Phrase** ("my secret bank pin...") | **Canary Commute** (Unique 10-Hex-ID trajectory) |
 | **Tab Completion Attack** | **Greedy Trajectory Rollout** |
 
@@ -94,7 +94,7 @@ d:/MTP/Spatiotemporal_moblity/OPA/
 ├── __init__.py      # Package exports and module definitions
 ├── crypto.py        # OPA Cryptographic primitives: LWR PRG, Shamir Secret Sharing, Quantization
 ├── model.py         # PyTorch NextLocationModel (Embedding -> GRU -> Linear)
-├── dataset.py       # Synthetic GPS generator, H3 discretization, 10-client partition, canary injection
+├── dataset.py       # GeoLife GPS parser, H3 discretization, caching, 10-client partition, canary injection
 ├── attack.py        # Tab Attack, greedy rollout, trajectory perplexity, |S_uniq|, and Leakage Epsilon
 ├── opa_flwr.py      # OPAClient & OPAFedAvg Strategy for Flower
 ├── main.py          # 10-client OPA simulation, public baseline model, and audit report
@@ -125,8 +125,9 @@ The following results were produced by executing `python -u d:/MTP/Spatiotempora
 ================================================================================
 
 [1] Generating Synthetic GPS Mobility Dataset & H3 Discretization (Res 9):
+[CACHE] Loaded GeoLife H3 trajectories directly from cache: d:\MTP\Spatiotemporal_moblity\data\geolife_h3_cache.pkl
     - Synthetic trajectories discretized into H3 Hexagons across 10 clients.
-    - Fitted LocationTokenizer: Spatial Vocabulary Size = 455 unique Hexagons.
+    - Fitted LocationTokenizer: Spatial Vocabulary Size = 2500 unique Hexagons.
     - Clients 0 through 8: Clean background mobility trajectories.
     - Client 9: Background trajectories + CANARY INJECTION (50x repeats):
                 "89283090ca7ffff 89283090cafffff 89283090c23ffff 89283090893ffff 8928309089bffff 8928309088bffff 892830908c7ffff 8928309081bffff 89283090857ffff 89283090847ffff"
@@ -135,27 +136,27 @@ The following results were produced by executing `python -u d:/MTP/Spatiotempora
 [OK] Public Baseline Model trained successfully (clean baseline distribution).
 
 [2] Neural Network Provisioning:
-    - NextLocationModel: Embedding(455, 32) -> GRU(32, 64) -> Linear(64, 455)
-    - Total Parameter Dimension L = 62951
+    - NextLocationModel: Embedding(2500, 32) -> GRU(32, 64) -> Linear(64, 2500)
+    - Total Parameter Dimension L = 261316
 
 [3] Initializing OPA Cryptographic Primitives (10-Client SSS, r=6, m=10):
     - Prime Modulus q    : 2147483647 (2^31 - 1)
     - Rounding Modulus p : 1048576 (2^20)
-    - Matrix A Shape     : (62951, 128)
+    - Matrix A Shape     : (261316, 128)
 
 [4] Starting 10-Client OPA Federated Learning Simulation (8 Rounds):
     - Plaintext weights/gradients are NEVER transmitted on the wire.
     - Each round, clients send ciphertexts c_i = (w_i + PRG(s_i)) mod p.
     - SSS shares are aggregated homomorphically across clients.
 
-    -> [Round 1/8] OPA Homomorphic Aggregation Complete (Client 9 Local Loss: 0.2834)
-    -> [Round 2/8] OPA Homomorphic Aggregation Complete (Client 9 Local Loss: 0.4562)
-    -> [Round 3/8] OPA Homomorphic Aggregation Complete (Client 9 Local Loss: 0.1086)
-    -> [Round 4/8] OPA Homomorphic Aggregation Complete (Client 9 Local Loss: 0.0782)
-    -> [Round 5/8] OPA Homomorphic Aggregation Complete (Client 9 Local Loss: 0.1270)
-    -> [Round 6/8] OPA Homomorphic Aggregation Complete (Client 9 Local Loss: 0.1625)
-    -> [Round 7/8] OPA Homomorphic Aggregation Complete (Client 9 Local Loss: 0.0487)
-    -> [Round 8/8] OPA Homomorphic Aggregation Complete (Client 9 Local Loss: 0.1274)
+    -> [Round 1/8] OPA Homomorphic Aggregation Complete (Client 9 Local Loss: 0.3582)
+    -> [Round 2/8] OPA Homomorphic Aggregation Complete (Client 9 Local Loss: 0.3975)
+    -> [Round 3/8] OPA Homomorphic Aggregation Complete (Client 9 Local Loss: 0.7118)
+    -> [Round 4/8] OPA Homomorphic Aggregation Complete (Client 9 Local Loss: 0.5609)
+    -> [Round 5/8] OPA Homomorphic Aggregation Complete (Client 9 Local Loss: 0.8075)
+    -> [Round 6/8] OPA Homomorphic Aggregation Complete (Client 9 Local Loss: 0.6103)
+    -> [Round 7/8] OPA Homomorphic Aggregation Complete (Client 9 Local Loss: 0.1642)
+    -> [Round 8/8] OPA Homomorphic Aggregation Complete (Client 9 Local Loss: 0.2897)
 
 [OK] 10-Client OPA Federated Learning simulation completed successfully.
 [OK] Successfully extracted global model weights from OPAFedAvg.
@@ -168,28 +169,28 @@ The following results were produced by executing `python -u d:/MTP/Spatiotempora
    QUANTITATIVE PRIVACY AUDIT: |S_uniq| & LEAKAGE EPSILON (SPATIOTEMPORAL H3)
    Based on Microsoft Research Methodology (arXiv:2101.05405v2)
 ==========================================================================================
-Total Unique Leaked Trajectories (|S_uniq|, user_count=1): 112
-Maximum Observed Leakage Epsilon (epsilon_l)            : 4.2601
+Total Unique Leaked Trajectories (|S_uniq|, user_count=1): 74
+Maximum Observed Leakage Epsilon (epsilon_l)            : 9.0212
 ------------------------------------------------------------------------------------------
 
  [!] PRIVACY LEAKAGE AUDIT TABLE (S_uniq Mobility Trajectories):
 Origin      | Steps | PP_target  | PP_public  | eps_l (Leakage) | Extracted H3 Hexagon Trajectory
 ------------------------------------------------------------------------------------------
-client_9    | 16    | 5.06       | 358.31     | 4.2601         | 89283090ca7ffff 89283090cafffff 8928309...
-client_9    | 17    | 5.55       | 299.94     | 3.9889         | 89283090ca7ffff 89283090cafffff 8928309...
-client_9    | 5     | 7.33       | 381.58     | 3.9528         | 89283082177ffff 89283082173ffff 8928308...
-client_9    | 4     | 13.84      | 689.44     | 3.9084         | 8928308210bffff 89283082157ffff 8928308...
-client_9    | 18    | 5.97       | 285.31     | 3.8665         | 89283090ca7ffff 89283090cafffff 8928309...
-client_9    | 4     | 9.99       | 447.31     | 3.8015         | 89283082ebbffff 89283082eabffff 8928308...
-client_9    | 18    | 6.53       | 251.97     | 3.6528         | 89283090cafffff 89283090c23ffff 8928309...
-client_9    | 5     | 21.95      | 714.79     | 3.4834         | 89283082ec3ffff 89283082edbffff 8928308...
-client_9    | 18    | 6.39       | 166.82     | 3.2624         | 89283090c23ffff 89283090893ffff 8928309...
-client_9    | 5     | 17.20      | 384.54     | 3.1070         | 89283082157ffff 89283082153ffff 8928308...
-client_9    | 18    | 6.68       | 115.93     | 2.8541         | 89283090893ffff 8928309089bffff 8928309...
-client_9    | 5     | 11.93      | 203.87     | 2.8380         | 89283082107ffff 89283082133ffff 8928308...
-client_9    | 4     | 4.90       | 73.44      | 2.7079         | 89283082e97ffff 89283082c4bffff 8928308...
-client_9    | 16    | 7.86       | 102.57     | 2.5688         | 89283082137ffff 89283082ccbffff 8928308...
-client_9    | 18    | 7.71       | 99.41      | 2.5562         | 89283082137ffff 89283082ccbffff 8928308...
+client_9    | 10    | 5.56       | 46024.40   | 9.0212         | 89283090ca7ffff 89283090cafffff 8928309...
+client_9    | 8     | 5.42       | 33846.15   | 8.7387         | 89283090c23ffff 89283090893ffff 8928309...
+client_9    | 6     | 5.94       | 26995.00   | 8.4210         | 8928309089bffff 8928309088bffff 8928309...
+client_9    | 5     | 7.73       | 30004.00   | 8.2642         | 8928309088bffff 892830908c7ffff 8928309...
+client_9    | 6     | 23.82      | 18610.09   | 6.6608         | 8931aa52acbffff 8931aa52a53ffff 8931aa5...
+client_9    | 6     | 10.88      | 31.66      | 1.0681         | 8931aa50ed3ffff 8931aa50ec3ffff 8931aa5...
+client_3    | 16    | 4.15       | 5.00       | 0.1863         | 8931aa50857ffff 8931aa50853ffff 8931aa5...
+client_9    | 5     | 3.63       | 4.35       | 0.1797         | 8931aa50e27ffff 8931aa50853ffff 8931aa5...
+client_0    | 1     | 1.00       | 1.00       | 0.0000         | 8931aa5432fffff
+client_0    | 1     | 1.00       | 1.00       | 0.0000         | 8931aa42857ffff
+client_0    | 1     | 1.00       | 1.00       | 0.0000         | 8931aa55c33ffff
+client_0    | 1     | 1.00       | 1.00       | 0.0000         | 8940b141257ffff
+client_0    | 1     | 1.00       | 1.00       | 0.0000         | 8931aa55b87ffff
+client_0    | 1     | 1.00       | 1.00       | 0.0000         | 8931aa55b9bffff
+client_0    | 1     | 1.00       | 1.00       | 0.0000         | 8931aa46687ffff
 
  Mathematical Formulation & Metric Interpretation:
  -> epsilon_l = log(PP_pub / PP_lm) measures differential memorization between
@@ -207,9 +208,9 @@ client_9    | 18    | 7.71       | 99.41      | 2.5562         | 89283082137ffff
   >>> PRIVACY BREACH CONFIRMED: CANARY COMMUTE EXTRACTION SUCCESSFUL! <<<
   Origin Client          : client_9 (User Count = 1, Private Unique Commute)
   Canary Path Length     : 10 H3 Hexagons
-  Perplexity on Target   : PP_lm  = 2.67
-  Perplexity on Public   : PP_pub = 2405.44
-  Leakage Epsilon        : eps_l  = 6.8017
+  Perplexity on Target   : PP_lm  = 5.56
+  Perplexity on Public   : PP_pub = 46024.40
+  Leakage Epsilon        : eps_l  = 9.0212
 --------------------------------------------------------------------------------
   CRITICAL CONCLUSION:
   One-Shot Private Aggregation (OPA) securely encrypted communication transcripts.

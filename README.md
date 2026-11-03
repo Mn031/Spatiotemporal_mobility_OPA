@@ -91,6 +91,7 @@ $$
 
 ```text
 d:/MTP/Spatiotemporal_moblity/OPA/
+├── requirements.txt # Project dependencies (torch, flwr, h3, pandas, etc.)
 ├── __init__.py      # Package exports and module definitions
 ├── crypto.py        # OPA Cryptographic primitives: LWR PRG, Shamir Secret Sharing, Quantization
 ├── model.py         # PyTorch NextLocationModel (Embedding -> GRU -> Linear)
@@ -98,19 +99,113 @@ d:/MTP/Spatiotemporal_moblity/OPA/
 ├── attack.py        # Tab Attack, greedy rollout, trajectory perplexity, |S_uniq|, and Leakage Epsilon
 ├── opa_flwr.py      # OPAClient & OPAFedAvg Strategy for Flower
 ├── main.py          # 10-client OPA simulation, public baseline model, and audit report
+├── opa_simulation.log # Automated terminal execution log file
 └── README.md        # Documentation
 ```
 
 ---
 
-## 5. Execution
+## 5. Experiment Replication Guide & Execution
 
-To run the complete 10-client OPA Federated Learning simulation and privacy audit:
+Follow these step-by-step instructions to replicate the One-Shot Private Aggregation (OPA) spatiotemporal mobility experiment from scratch and capture all terminal output.
 
-```bash
-cd d:/MTP/Spatiotemporal_moblity/OPA
+### Step 1: Environment Setup & Install Dependencies
+
+Create and activate a virtual environment, then install dependencies from `requirements.txt`:
+
+```powershell
+# Navigate to the OPA directory
+cd d:\MTP\Spatiotemporal_moblity\OPA
+
+# Optional: Create and activate virtual environment
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+# Install requirements
+pip install -r requirements.txt
+```
+
+*(On Linux / macOS, use `source venv/bin/activate`)*
+
+### Step 2: Dataset & Hugging Face Token Note
+
+> [!NOTE]
+> **No Hugging Face Token Required:** This spatiotemporal mobility benchmark operates on the real local **Microsoft GeoLife GPS Trajectories** dataset located at `../data/Geolife Trajectories 1.3/Data/`. It does not require Hugging Face authentication.
+>
+> On initial launch, `dataset.py` parses `.plt` files, filters static GPS drift, segments continuous tracks into 6-hour trips, discretizes coordinates into Uber H3 Resolution 9 hexagons, and writes `geolife_h3_cache.pkl`. Subsequent runs load from the cache in under 2 seconds.
+
+### Step 3: Run the Experiment & Write Terminal Logs to File
+
+The simulation automatically records all console output into a persistent log file (`opa_simulation.log`) using an integrated real-time `TeeLogger`.
+
+#### Option A: Built-in Logging (Default)
+Simply run the script. Output is displayed in the terminal and simultaneously saved to `opa_simulation.log`:
+
+```powershell
+cd d:\MTP\Spatiotemporal_moblity\OPA
 python main.py
 ```
+
+#### Option B: Custom Log File Path via CLI
+To specify a custom log file destination:
+
+```powershell
+python main.py --log-file "custom_opa_run.log" --rounds 8 --clients 10 --batch-size 16
+```
+
+#### Option C: Shell-Level Redirection & Piping
+You can also pipe the execution output using standard terminal utilities:
+
+```powershell
+# Windows PowerShell (Live terminal view + file output)
+python main.py 2>&1 | Tee-Object -FilePath "opa_simulation.log"
+
+# Linux / macOS (Live terminal view + file output)
+python main.py 2>&1 | tee opa_simulation.log
+```
+
+### Step 4: Module Invocation from Project Root
+
+You can also execute the benchmark from the project root:
+
+```powershell
+cd d:\MTP
+python -m Spatiotemporal_moblity.OPA.main --rounds 8 --clients 10 --batch-size 16
+```
+
+### Step 5: Reading Terminal Logs Later
+
+To inspect the saved execution log at any time:
+
+```powershell
+# Windows PowerShell
+Get-Content opa_simulation.log -Tail 50
+
+# Linux / macOS
+tail -n 50 opa_simulation.log
+```
+
+### Command-Line Arguments Reference
+
+| Argument | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--rounds` | `int` | `8` | Number of Federated Learning communication rounds |
+| `--clients` | `int` | `10` | Number of simulated FL clients ($m$) |
+| `--batch-size` | `int` | `16` | Mini-batch size for client DataLoaders |
+| `--seed` | `int` | `42` | Deterministic random seed for reproducibility |
+| `--log-file` | `str` | `opa_simulation.log` | Path to automatically write all terminal output to file |
+
+---
+
+### Simulation Execution Workflow
+The orchestrator executes the following workflow:
+1. Loads pre-discretized GeoLife H3 trajectories from `geolife_h3_cache.pkl`.
+2. Injects the confidential commute canary into Client 9 (50 repetitions).
+3. Trains the Public Baseline Model on clean Clients 0–8.
+4. Provisions LWR PRG ($A \in \mathbb{Z}_q^{L \times \lambda}$) and Shamir Secret Sharing ($m=10, r=6$).
+5. Runs 8 rounds of Flower FL with OPAFedAvg secure aggregation.
+6. Performs Tab Attack and Greedy Rollout.
+7. Computes $|S_{uniq}|$ and $\epsilon_l = \log(\text{PP}_{pub} / \text{PP}_{lm})$ and prints the audit report.
 
 ---
 

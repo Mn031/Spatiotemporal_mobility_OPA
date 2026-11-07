@@ -1,5 +1,8 @@
 # Inference-Time Privacy Audit against OPA-Secured Federated Learning (Spatiotemporal Mobility)
 
+> **Master's Thesis Deliverable:**  
+> Exhaustive Implementation & Results Report: [Markdown Document](file:///d:/MTP/Spatiotemporal_moblity/OPA/Spatiotemporal_Mobility_OPA_Implementation_and_Results_Report.md) | [Compiled PDF Report (3 Pages)](file:///d:/MTP/Spatiotemporal_moblity/OPA/Spatiotemporal_Mobility_OPA_Implementation_and_Results_Report.pdf)
+
 A cryptographic and machine learning benchmark demonstrating the fundamental dichotomy between **Transport-Layer Privacy (Cryptographic Secure Aggregation via OPA)** and **Inference-Time Model Privacy (Empirical Memorization via Tab Attack & Formal Privacy Metrics)** on **Spatiotemporal Mobility Trajectories** using PyTorch and Flower (`flwr`).
 
 ---
